@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Code Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: monospace;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    .topbar {
+      background-color: #101623;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      position: relative;
+      flex-wrap: wrap;
+    }
+
+    .clock {
+      font-size: 16px;
+    }
+
+    .center-section {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .theme-toggle-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+    }
+
+    .theme-toggle-button:hover {
+      background-color: #2d2d2d;
+    }
+
+    .right-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-email {
+      color: #ffffff;
+      font-size: 12px;
+      word-break: break-word;
+    }
+
+    .menu-button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+    }
+
+    .menu-button:hover {
+      background-color: #2d2d2d;
+    }
+
+    .dropdown {
+      position: absolute;
+      right: 16px;
+      top: 45px;
+      background-color: #2d2d2d;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      display: none;
+      z-index: 100;
+    }
+
+    .dropdown.active {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+
+    .dropdown-item:hover {
+      background-color: #3d3d3d;
+    }
+
+    .editor-container {
+      display: flex;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+
+    .line-numbers {
+      background-color: #1e1e1e;
+      color: #aaa;
+      padding: 10px 4px 10px 10px;
+      text-align: right;
+      user-select: none;
+      overflow: hidden;
+      width: 40px;
+    }
+
+    .line-numbers-content {
+      position: relative;
+      top: 0;
+      line-height: 20px;
+    }
+
+    textarea {
+      flex: 1;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border: none;
+      outline: none;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 14px;
+      resize: none;
+      line-height: 20px;
+      overflow: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    textarea::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Light Theme */
+    .light-theme {
+      background-color: #ffffff;
+      color: #000000;
+    }
+
+    .light-theme .topbar {
+      background-color: #f0f0f0;
+      color: #000;
+    }
+
+    .light-theme .user-email,
+    .light-theme .clock {
+      color: #000;
+    }
+
+    .light-theme .line-numbers {
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    .light-theme textarea {
+      background-color: #ffffff;
+      color: #000000;
+    }
+
+    .light-theme .theme-toggle-button {
+      color: #000;
+    }
+
+    .light-theme .dropdown {
+      background-color: #e0e0e0;
+      color: #000;
+    }
+
+    .light-theme .dropdown-item:hover {
+      background-color: #d0d0d0;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+      }
+
+      .center-section {
+        position: static;
+        transform: none;
+        margin: 10px auto;
+      }
+
+      .right-section {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 8px;
+      }
+
+      .editor-container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .line-numbers {
+        width: 100%;
+        text-align: left;
+        padding: 5px 10px;
+        overflow: auto;
+        white-space: nowrap;
+      }
+
+      textarea {
+        width: 100%;
+        height: calc(100vh - 160px);
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="clock" id="clock"></div>
+
+    <div class="center-section">
+      <button class="theme-toggle-button" id="theme-toggle">🌙</button>
+    </div>
+
+    <div class="right-section">
+      <div class="user-email">titop13497@lushosa.com</div>
+      <button class="menu-button" id="menu-button">☰</button>
+      <div class="dropdown" id="dropdown">
+        <div class="dropdown-item">NewCodeSpace</div>
+        <div class="dropdown-item">MyCodeSpace</div>
+        <div class="dropdown-item">Settings</div>
+        <div class="dropdown-item">Logout</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="editor-container">
+    <div class="line-numbers" id="line-numbers">
+      <div class="line-numbers-content" id="line-numbers-content"></div>
+    </div>
+    <textarea id="code-editor" spellcheck="false"><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Code Editor</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: monospace;
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <p>Start coding here...</p>
+    
+    <script>
+      console.log("Welcome to the Live Code Editor!");
+    </script>
+</body>
+</html></textarea>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const options = {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      };
+      document.getElementById('clock').textContent = now.toLocaleString('en-US', options);
+    }
+
+    updateClock();
+    setInterval(updateClock, 60000);
+
+    const codeEditor = document.getElementById('code-editor');
+    const lineNumbers = document.getElementById('line-numbers');
+    const lineNumbersContent = document.getElementById('line-numbers-content');
+
+    function updateLineNumbers() {
+      const lines = codeEditor.value.split('\n');
+      let lineNumbersHTML = '';
+      for (let i = 1; i <= lines.length; i++) {
+        lineNumbersHTML += i + '<br>';
+      }
+      lineNumbersContent.innerHTML = lineNumbersHTML;
+    }
+
+    updateLineNumbers();
+    codeEditor.addEventListener('input', updateLineNumbers);
+    codeEditor.addEventListener('scroll', () => {
+      lineNumbers.scrollTop = codeEditor.scrollTop;
+    });
+
+    codeEditor.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+        updateLineNumbers();
+      }
+    });
+
+    const menuButton = document.getElementById('menu-button');
+    const dropdown = document.getElementById('dropdown');
+    menuButton.addEventListener('click', () => {
+      dropdown.classList.toggle('active');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!menuButton.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.remove('active');
+      }
+    });
+
+    const themeToggleButton = document.getElementById('theme-toggle');
+    const isDarkStored = localStorage.getItem('theme') || 'dark';
+    let isDark = isDarkStored === 'dark';
+
+    if (isDark) {
+      themeToggleButton.textContent = '🌙';
+      document.body.classList.remove('light-theme');
+    } else {
+      themeToggleButton.textContent = '☀️';
+      document.body.classList.add('light-theme');
+    }
+
+    themeToggleButton.addEventListener('click', () => {
+      document.body.classList.toggle('light-theme');
+      isDark = !isDark;
+      themeToggleButton.textContent = isDark ? '🌙' : '☀️';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    window.addEventListener('load', () => {
+      codeEditor.focus();
+    });
+  </script>
+</body>
+</html>
