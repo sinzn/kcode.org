@@ -1,0 +1,618 @@
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Code Editor with Theme Toggle, Logout, Split Video Call & Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+  />
+  <style>
+    /* Hide scrollbar but keep scroll functionality */
+    #codeEditor::-webkit-scrollbar,
+    #chatMessages::-webkit-scrollbar,
+    #chatUserList::-webkit-scrollbar {
+      display: none;
+    }
+    #codeEditor,
+    #chatMessages,
+    #chatUserList {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Code editor with line numbers container */
+    #editorContainer {
+      background-color: #272b23;
+      color: #a9a9a9;
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      display: flex;
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid #3a3f3a;
+      border-radius: 0.375rem; /* rounded */
+    }
+    /* Line numbers styling */
+    #lineNumbers {
+      background-color: #2f3230;
+      color: #6b6b6b;
+      padding: 8px 6px 8px 8px;
+      text-align: right;
+      user-select: none;
+      overflow: hidden;
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      border-right: 1px solid #3a3f3a;
+      min-width: 30px;
+    }
+    /* Textarea styling */
+    #codeEditor {
+      background-color: #272b23;
+      color: #a9a9a9;
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 8px;
+      flex: 1;
+      overflow: auto;
+      white-space: pre;
+    }
+    /* Username container for hover */
+    #usernameContainer {
+      position: relative;
+      background-color: #3a3f3a;
+      color: #a9a9a9;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 12px 2px 12px;
+      border-radius: 0.375rem;
+      user-select: text;
+      cursor: default;
+      display: inline-flex;
+      align-items: center;
+    }
+    /* Buttons container hidden by default */
+    #userButtons {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background-color: #2f3230;
+      border: 1px solid #4a4f4a;
+      border-radius: 0.375rem;
+      padding: 4px 6px;
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-in-out;
+      white-space: nowrap;
+      z-index: 1000;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+    }
+    /* Show buttons on hover of username container */
+    #usernameContainer:hover #userButtons,
+    #usernameContainer:focus-within #userButtons {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    /* Buttons styling */
+    #userButtons button {
+      background-color: transparent;
+      border: none;
+      color: #a9a9a9;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+    }
+    #userButtons button:hover {
+      background-color: #d6336c;
+      color: white;
+    }
+    /* Right panel container */
+    #rightPanel {
+      width: 288px; /* 72 * 4 */
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #3a3f3a;
+      background-color: #2f3230;
+      overflow: hidden;
+      height: 100%;
+    }
+    /* Video call container top half */
+    #videoCallArea {
+      flex: 1;
+      background-color: black;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+      overflow-y: auto;
+      border-bottom: 1px solid #3a3f3a;
+      border-top-left-radius: 0.375rem;
+      box-sizing: border-box;
+    }
+    #videoCallArea video {
+      background-color: black;
+      border-radius: 0.375rem;
+      width: 48%;
+      height: 48%;
+      object-fit: cover;
+    }
+    /* Chat container bottom half */
+    #chatArea {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #272b23;
+      border-bottom-left-radius: 0.375rem;
+      box-sizing: border-box;
+      height: 50%;
+      min-height: 0;
+    }
+    /* Connected users list */
+    #chatUserList {
+      background-color: #2f3230;
+      color: #a9a9a9;
+      font-size: 9px;
+      border-bottom: 1px solid #3a3f3a;
+      padding: 4px 6px;
+      overflow-y: auto;
+      max-height: 48px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    #chatUserList span {
+      background-color: #3a3f3a;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+    /* Chat messages */
+    #chatMessages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      font-size: 10px;
+      color: #a9a9a9;
+      min-height: 0;
+    }
+    /* Chat input form */
+    #chatForm {
+      padding: 6px;
+      border-top: 1px solid #3a3f3a;
+      display: flex;
+      gap: 6px;
+    }
+    #chatInput {
+      flex: 1;
+      background-color: #272b23;
+      color: #a9a9a9;
+      font-family: monospace;
+      font-size: 10px;
+      border: 1px solid #3a3f3a;
+      border-radius: 0.375rem;
+      padding: 4px 8px;
+      outline: none;
+    }
+    #chatForm button {
+      background-color: #d6336c;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 0.375rem;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+    }
+    #chatForm button:hover {
+      background-color: #b52a5a;
+    }
+    /* Theme toggle button */
+    #themeToggleBtn {
+      background-color: #2f3230;
+      border: 1px solid #4a4f4a;
+      color: #a9a9a9;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+    }
+    #themeToggleBtn:hover {
+      background-color: #d6336c;
+      color: white;
+    }
+    /* Dark theme overrides */
+    .dark-theme {
+      --bg-color: #f9fafb;
+      --text-color: #1f2937;
+      --border-color: #d1d5db;
+      --code-bg: #e5e7eb;
+      --code-text: #111827;
+      --chat-bg: #f3f4f6;
+      --chat-text: #374151;
+      --user-bg: #d1d5db;
+      --user-text: #1f2937;
+    }
+    .dark-theme body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+    .dark-theme #editorContainer {
+      background-color: var(--code-bg);
+      color: var(--code-text);
+      border-color: var(--border-color);
+    }
+    .dark-theme #lineNumbers {
+      background-color: #d4d4d4;
+      color: #6b7280;
+      border-color: var(--border-color);
+    }
+    .dark-theme #codeEditor {
+      background-color: var(--code-bg);
+      color: var(--code-text);
+    }
+    .dark-theme #usernameContainer {
+      background-color: var(--user-bg);
+      color: var(--user-text);
+    }
+    .dark-theme #userButtons {
+      background-color: var(--user-bg);
+      border-color: var(--border-color);
+      color: var(--user-text);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .dark-theme #userButtons button {
+      color: var(--user-text);
+    }
+    .dark-theme #userButtons button:hover {
+      background-color: #b91c1c;
+      color: white;
+    }
+    .dark-theme #rightPanel {
+      background-color: var(--chat-bg);
+      border-color: var(--border-color);
+    }
+    .dark-theme #videoCallArea {
+      background-color: #d1d5db;
+      border-color: var(--border-color);
+    }
+    .dark-theme #chatArea {
+      background-color: var(--chat-bg);
+    }
+    .dark-theme #chatUserList {
+      background-color: #e5e7eb;
+      color: var(--chat-text);
+      border-color: var(--border-color);
+    }
+    .dark-theme #chatUserList span {
+      background-color: #d1d5db;
+      color: var(--chat-text);
+    }
+    .dark-theme #chatMessages {
+      color: var(--chat-text);
+    }
+    .dark-theme #chatInput {
+      background-color: #e5e7eb;
+      color: var(--chat-text);
+      border-color: var(--border-color);
+    }
+    .dark-theme #chatForm button {
+      background-color: #b91c1c;
+    }
+    .dark-theme #chatForm button:hover {
+      background-color: #7f1d1d;
+    }
+    .dark-theme #themeToggleBtn {
+      background-color: var(--chat-bg);
+      color: var(--chat-text);
+      border-color: var(--border-color);
+    }
+    .dark-theme #themeToggleBtn:hover {
+      background-color: #b91c1c;
+      color: white;
+    }
+  </style>
+</head>
+<body class="bg-[#272b23] text-[#a9a9a9] font-mono text-[10px] leading-[1.2] select-none h-screen flex flex-col overflow-hidden" id="body">
+  <!-- Top bar -->
+  <div class="flex items-center justify-between bg-[#2f3230] px-3 py-1 text-[11px] text-[#a9a9a9] flex-shrink-0">
+    <div class="flex items-center space-x-1">
+      <i class="fas fa-times text-[#a9a9a9]"></i>
+      <span id="realTimeClock">May 05 8:52 PM</span>
+    </div>
+    <div class="flex items-center space-x-2 absolute left-1/2 transform -translate-x-1/2">
+      <button id="themeToggleBtn" aria-label="Toggle theme">Light Theme</button>
+    </div>
+    <div class="flex items-center space-x-2 relative">
+      <div id="usernameContainer" tabindex="0" aria-label="User options">
+        Boy Khan
+        <div id="userButtons" role="group" aria-label="User action buttons">
+          <button title="Settings" aria-label="Settings">
+            <i class="fas fa-cog"></i>
+          </button>
+          <button title="Download" aria-label="Download">
+            <i class="fas fa-download"></i>
+          </button>
+          <button title="Add" aria-label="Add">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+      </div>
+      <button id="logoutBtn" title="Logout" aria-label="Logout" class="ml-2 bg-[#d6336c] text-white text-[10px] font-semibold px-3 py-1 rounded hover:bg-[#b52a5a] cursor-pointer select-none">
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Main content area with editor and right panel -->
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Code editor area with line numbers -->
+    <div class="flex-1 p-2 overflow-hidden">
+      <div id="editorContainer" class="h-full">
+        <pre id="lineNumbers" aria-hidden="true">1</pre>
+        <textarea
+          id="codeEditor"
+          spellcheck="false"
+          placeholder="Write or paste code here then Share. Anyone you share with will see code as it is typed!"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Right panel: video call top half, chat bottom half -->
+    <div id="rightPanel" aria-label="Video call and chat panel">
+      <!-- Video call area top half -->
+      <div id="videoCallArea" aria-label="Video call area"></div>
+      <!-- Chat area bottom half -->
+      <div id="chatArea" aria-label="Chat area">
+        <div id="chatUserList" aria-label="Connected users">
+          <span>Boy Khan</span>
+          <span>Guest 1</span>
+          <span>Guest 2</span>
+        </div>
+        <div id="chatMessages" aria-live="polite" aria-atomic="false"></div>
+        <form id="chatForm" aria-label="Send message form">
+          <input
+            id="chatInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Type a message..."
+            required
+            aria-required="true"
+          />
+          <button type="submit" aria-label="Send message">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="fixed bottom-0 left-0 right-0 bg-[#1a1a1a] text-[9px] text-[#a9a9a9] flex items-center justify-center space-x-1 py-0.5 select-none">
+    <span class="bg-black text-white px-1 rounded font-bold">SPONSOR</span>
+    <span>Auth0 - Our Auth0 plans just got a major boost! Enjoy Custom Domain, Passwordless, and up to 25,000 MAUs.</span>
+    <button class="ml-auto text-[#6b6b6b] hover:text-[#a9a9a9] text-[9px] font-semibold">Hide Ads</button>
+  </div>
+
+  <script>
+    // Real-time clock update
+    function updateClock() {
+      const now = new Date();
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = monthNames[now.getMonth()];
+      const day = now.getDate();
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const timeString = `${month} ${day} ${hours}:${minutes} ${ampm}`;
+      document.getElementById('realTimeClock').textContent = timeString;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Theme toggle
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const body = document.getElementById('body');
+    let darkTheme = false;
+    themeToggleBtn.addEventListener('click', () => {
+      darkTheme = !darkTheme;
+      if (darkTheme) {
+        body.classList.add('dark-theme');
+        themeToggleBtn.textContent = 'Dark Theme';
+      } else {
+        body.classList.remove('dark-theme');
+        themeToggleBtn.textContent = 'Light Theme';
+      }
+    });
+
+    // Chat functionality
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'bg-[#3a3f3a] rounded px-2 py-1 break-words';
+      msgDiv.textContent = message;
+      chatMessages.appendChild(msgDiv);
+
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      chatInput.value = '';
+      chatInput.focus();
+    });
+
+    // Video call elements
+    const videoCallArea = document.getElementById('videoCallArea');
+
+    let localStream = null;
+    let peerConnection = null;
+
+    // STUN servers for ICE candidates
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // Simple signaling simulation using window events (for demo only)
+    const signalingChannel = new EventTarget();
+
+    function sendSignal(data) {
+      setTimeout(() => {
+        signalingChannel.dispatchEvent(new CustomEvent('signal', { detail: data }));
+      }, 100);
+    }
+
+    signalingChannel.addEventListener('signal', async (event) => {
+      const data = event.detail;
+      if (!peerConnection) return;
+
+      if (data.sdp) {
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          if (data.sdp.type === 'offer') {
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            sendSignal({ sdp: peerConnection.localDescription });
+          }
+        } catch (err) {
+          console.error('Error handling SDP', err);
+        }
+      } else if (data.candidate) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (err) {
+          console.error('Error adding ICE candidate', err);
+        }
+      }
+    });
+
+    async function startVideoCall() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+        peerConnection = new RTCPeerConnection(configuration);
+
+        // Add local tracks to peer connection
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        // Create local video element
+        const localVideo = document.createElement('video');
+        localVideo.autoplay = true;
+        localVideo.muted = true;
+        localVideo.playsInline = true;
+        localVideo.srcObject = localStream;
+        localVideo.className = 'rounded w-1/2 h-1/2 object-cover';
+        videoCallArea.appendChild(localVideo);
+
+        // When remote track arrives, create remote video element
+        peerConnection.ontrack = (event) => {
+          let remoteVideo = document.getElementById('remoteVideo');
+          if (!remoteVideo) {
+            remoteVideo = document.createElement('video');
+            remoteVideo.id = 'remoteVideo';
+            remoteVideo.autoplay = true;
+            remoteVideo.playsInline = true;
+            remoteVideo.className = 'rounded w-1/2 h-1/2 object-cover';
+            videoCallArea.appendChild(remoteVideo);
+          }
+          if (remoteVideo.srcObject !== event.streams[0]) {
+            remoteVideo.srcObject = event.streams[0];
+          }
+        };
+
+        // ICE candidates handling
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            sendSignal({ candidate: event.candidate });
+          }
+        };
+
+        // Create offer and set local description
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        sendSignal({ sdp: peerConnection.localDescription });
+      } catch (err) {
+        alert('Could not start video call: ' + err.message);
+        closeVideoCall();
+      }
+    }
+
+    function closeVideoCall() {
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      // Remove video elements
+      const localVideo = videoCallArea.querySelector('video#localVideo');
+      if (localVideo) localVideo.remove();
+      const remoteVideo = videoCallArea.querySelector('video#remoteVideo');
+      if (remoteVideo) remoteVideo.remove();
+    }
+
+    // Start video call immediately for demo
+    startVideoCall();
+
+    // Line numbers update
+    const codeEditor = document.getElementById('codeEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+
+    function updateLineNumbers() {
+      const linesCount = codeEditor.value.split('\n').length;
+      let lines = '';
+      for (let i = 1; i <= linesCount; i++) {
+        lines += i + '\n';
+      }
+      lineNumbers.textContent = lines;
+    }
+
+    // Sync scroll between textarea and line numbers
+    codeEditor.addEventListener('scroll', () => {
+      lineNumbers.scrollTop = codeEditor.scrollTop;
+    });
+
+    // Update line numbers on input
+    codeEditor.addEventListener('input', updateLineNumbers);
+
+    // Initialize line numbers
+    updateLineNumbers();
+
+    // Logout button handler
+    const logoutBtn = document.getElementById('logoutBtn');
+    logoutBtn.addEventListener('click', () => {
+      alert('Logout clicked');
+      // Add logout logic here
+    });
+  </script>
+</body>
+</html>
